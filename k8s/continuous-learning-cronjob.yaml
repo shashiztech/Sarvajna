@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: continuous-learning-config
+  namespace: sarvanjna
+data:
+  continuous_learning.yaml: |
+    # Continuous Learning Configuration for Kubernetes
+    data_collection:
+      wikipedia:
+        enabled: true
+        categories: ["Machine learning", "Artificial intelligence", "Computer science"]
+        max_articles: 500
+      gutenberg:
+        enabled: true
+        max_books: 50
+      wikimedia:
+        enabled: true
+        max_images: 5000
+    
+    training:
+      text:
+        batch_size: 32
+        max_epochs: 5
+        learning_rate: 1.0e-4
+    
+    distributed:
+      strategy: "ddp"
+      num_gpus: 1
+      precision: "bf16-mixed"
+    
+    output:
+      base_dir: "/workspace/outputs/continuous_learning"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: continuous-learning-text
+  namespace: sarvanjna
+spec:
+  # Run weekly on Sunday at 2 AM
+  schedule: "0 2 * * 0"
+  
+  # Keep last 3 successful jobs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  
+  jobTemplate:
+    spec:
+      # Job timeout: 48 hours
+      activeDeadlineSeconds: 172800
+      
+      template:
+        metadata:
+          labels:
+            app: sarvanjna
+            component: continuous-learning
+            model-type: text
+        
+        spec:
+          restartPolicy: OnFailure
+          
+          # Node selection (GPU nodes)
+          nodeSelector:
+            accelerator: nvidia-gpu
+          
+          # Service account for accessing storage
+          serviceAccountName: sarvanjna-training
+          
+          containers:
+          - name: continuous-learning
+            image: sarvanjna/continuous-learning:latest
+            imagePullPolicy: Always
+            
+            command:
+            - python
+            - scripts/continuous_learning_pipeline.py
+            args:
+            - --config
+            - /config/continuous_learning.yaml
+            - --model-type
+            - text
+            - --deploy
+            
+            # Resource requests and limits
+            resources:
+              requests:
+                memory: "16Gi"
+                cpu: "4"
+                nvidia.com/gpu: "1"
+              limits:
+                memory: "32Gi"
+                cpu: "8"
+                nvidia.com/gpu: "1"
+            
+            # Environment variables
+            env:
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+            - name: PYTHONPATH
+              value: "/workspace"
+            - name: PYTORCH_CUDA_ALLOC_CONF
+              value: "max_split_size_mb:512"
+            
+            # Volume mounts
+            volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: data-storage
+              mountPath: /workspace/data
+            - name: output-storage
+              mountPath: /workspace/outputs
+            - name: model-storage
+              mountPath: /workspace/deployments
+            - name: cache
+              mountPath: /root/.cache
+          
+          # Volumes
+          volumes:
+          - name: config
+            configMap:
+              name: continuous-learning-config
+          
+          - name: data-storage
+            persistentVolumeClaim:
+              claimName: sarvanjna-data-pvc
+          
+          - name: output-storage
+            persistentVolumeClaim:
+              claimName: sarvanjna-outputs-pvc
+          
+          - name: model-storage
+            persistentVolumeClaim:
+              claimName: sarvanjna-models-pvc
+          
+          - name: cache
+            emptyDir: {}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sarvanjna-data-pvc
+  namespace: sarvanjna
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: nfs-storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sarvanjna-outputs-pvc
+  namespace: sarvanjna
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: nfs-storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sarvanjna-models-pvc
+  namespace: sarvanjna
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: nfs-storage
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sarvanjna-training
+  namespace: sarvanjna
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sarvanjna-training-role
+  namespace: sarvanjna
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sarvanjna-training-rolebinding
+  namespace: sarvanjna
+subjects:
+- kind: ServiceAccount
+  name: sarvanjna-training
+  namespace: sarvanjna
+roleRef:
+  kind: Role
+  name: sarvanjna-training-role
+  apiGroup: rbac.authorization.k8s.io

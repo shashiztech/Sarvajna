@@ -1,0 +1,275 @@
+# Continuous Learning Configuration
+# Automated training pipeline settings
+
+# ============== Data Collection ==============
+data_collection:
+  # Wikipedia settings
+  wikipedia:
+    enabled: true
+    categories:
+      - "Machine learning"
+      - "Artificial intelligence"
+      - "Computer science"
+      - "Mathematics"
+      - "Physics"
+      - "History"
+      - "Literature"
+      - "Philosophy"
+    max_articles: 1000
+    language: "en"
+  
+  # Project Gutenberg settings
+  gutenberg:
+    enabled: true
+    max_books: 100
+    book_ids_range: [1, 70000]  # Public domain books
+    preferred_format: "txt"
+  
+  # Wikimedia Commons settings
+  wikimedia:
+    enabled: true
+    categories:
+      - "Featured pictures"
+      - "Quality images"
+      - "Nature photographs"
+      - "Architecture photographs"
+      - "Art"
+    allowed_licenses:
+      - "CC0"
+      - "CC-BY-SA-4.0"
+      - "CC-BY-4.0"
+      - "CC-BY-SA-3.0"
+    max_images: 10000
+  
+  # Archive.org (pre-1928 public domain only)
+  archive_org:
+    enabled: false  # Manual verification recommended
+    collections:
+      - "texts"
+    year_limit: 1928  # Only pre-1928 content
+
+# ============== Data Preprocessing ==============
+preprocessing:
+  text:
+    min_length: 100  # Minimum characters
+    max_length: 100000  # Maximum characters
+    min_quality_score: 0.5  # Quality threshold (0-1)
+    remove_boilerplate: true
+    normalize_unicode: true
+    
+  image:
+    target_size: [512, 512]
+    format: "jpg"
+    quality: 95
+    
+  video:
+    target_resolution: [512, 320]
+    target_fps: 8
+    max_frames: 24
+    
+  audio:
+    sample_rate: 24000
+    channels: 1
+    duration: 30  # seconds
+
+# ============== Training Settings ==============
+training:
+  text:
+    batch_size: 32
+    gradient_accumulation_steps: 4
+    max_epochs: 10
+    learning_rate: 1.0e-4
+    warmup_steps: 1000
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.95
+    gradient_clip: 1.0
+    
+    # Incremental learning
+    incremental: true
+    freeze_layers: []  # Layers to freeze
+    learning_rate_scale: 0.1  # Scale LR for incremental updates
+    
+  image:
+    batch_size: 16
+    gradient_accumulation_steps: 8
+    max_epochs: 5
+    learning_rate: 1.0e-5
+    warmup_steps: 500
+    weight_decay: 0.01
+    ema_decay: 0.9999
+    
+  video:
+    batch_size: 2
+    gradient_accumulation_steps: 32
+    max_epochs: 3
+    learning_rate: 5.0e-6
+    warmup_steps: 200
+    
+  music:
+    batch_size: 8
+    gradient_accumulation_steps: 16
+    max_epochs: 5
+    learning_rate: 1.0e-5
+    warmup_steps: 300
+
+# ============== Distributed Training ==============
+distributed:
+  strategy: "ddp"  # ddp or fsdp
+  num_gpus: 1
+  num_nodes: 1
+  precision: "bf16-mixed"
+  find_unused_parameters: false
+
+# ============== Evaluation Settings ==============
+evaluation:
+  text:
+    metrics:
+      - "perplexity"
+      - "bleu"
+      - "rouge"
+    test_size: 1000  # Number of test samples
+    
+  image:
+    metrics:
+      - "fid"
+      - "inception_score"
+      - "clip_score"
+    num_samples: 5000
+    
+  video:
+    metrics:
+      - "fvd"
+      - "clip_score"
+    num_samples: 1000
+    
+  music:
+    metrics:
+      - "fad"
+      - "kl_divergence"
+    num_samples: 500
+
+# ============== Model Versioning ==============
+versioning:
+  save_top_k: 3  # Keep best 3 checkpoints
+  metric: "primary_metric"
+  mode: "max"  # max or min
+  
+  # Auto-deploy settings
+  auto_deploy:
+    enabled: false  # Requires manual approval by default
+    min_improvement: 0.01  # Minimum metric improvement to deploy
+    validation_period_hours: 24  # Test period before deployment
+
+# ============== Continuous Learning Schedule ==============
+continuous_learning:
+  enabled: false  # Set to true for automated runs
+  interval_hours: 168  # Run weekly (7 days)
+  
+  # Data collection schedule (can differ from training)
+  data_collection_interval_hours: 24  # Collect daily
+  
+  # Resource limits
+  max_training_hours: 48
+  max_disk_usage_gb: 500
+
+# ============== Legal Compliance ==============
+legal_compliance:
+  # Allowed licenses for training data
+  allowed_licenses:
+    - "Public Domain"
+    - "CC0-1.0"
+    - "CC-BY-4.0"
+    - "CC-BY-SA-4.0"
+    - "CC-BY-3.0"
+    - "CC-BY-SA-3.0"
+    - "MIT"
+    - "Apache-2.0"
+  
+  # Attribution requirements
+  track_attribution: true
+  generate_attribution_file: true
+  
+  # Content filters
+  exclude_patterns:
+    - "©"  # Copyright symbol
+    - "All rights reserved"
+    - "Proprietary"
+  
+  # Age restrictions
+  min_publication_year: null  # null = no restriction
+  max_publication_year: null
+
+# ============== Monitoring ==============
+monitoring:
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: "logs/tensorboard"
+  
+  # Weights & Biases
+  wandb:
+    enabled: false
+    project: "sarvanjna"
+    entity: null
+  
+  # Alerts
+  alerts:
+    enabled: false
+    email: null
+    slack_webhook: null
+
+# ============== Output Directories ==============
+output:
+  base_dir: "outputs/continuous_learning"
+  
+  # Subdirectories
+  data:
+    raw: "data/legal_sources"
+    processed: "outputs/continuous_learning/data/processed"
+  
+  models:
+    checkpoints: "outputs/continuous_learning/models/checkpoints"
+    registry: "outputs/continuous_learning/models/registry"
+  
+  logs:
+    training: "logs/training"
+    evaluation: "logs/evaluation"
+    pipeline: "logs/pipeline"
+
+# ============== Safety Settings ==============
+safety:
+  # Content moderation
+  enable_content_filtering: true
+  
+  # Resource limits
+  max_memory_gb: 64
+  max_cpu_percent: 80
+  
+  # Backup
+  backup_checkpoints: true
+  backup_interval_hours: 24
+  backup_location: "backups/"
+
+# ============== Model-Specific Settings ==============
+models:
+  text:
+    vocab_size: 32000
+    hidden_dim: 512
+    num_layers: 12
+    num_heads: 8
+    
+  image:
+    latent_channels: 4
+    unet_channels: 320
+    vae_channels: 128
+    
+  video:
+    num_frames: 24
+    frame_rate: 8
+    temporal_compression: 4
+    
+  music:
+    sample_rate: 24000
+    num_codebooks: 4
+    codebook_size: 1024

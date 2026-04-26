@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Continuous Learning Pipeline
+  continuous-learning:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.continuous_learning
+    
+    container_name: sarvanjna-continuous-learning
+    
+    # Use GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    
+    volumes:
+      # Mount local directories
+      - ../data:/workspace/data
+      - ../outputs:/workspace/outputs
+      - ../logs:/workspace/logs
+      - ../deployments:/workspace/deployments
+      - ../configs:/workspace/configs
+      - ../scripts:/workspace/scripts
+      - ~/.cache:/root/.cache
+    
+    # Command: run once (not continuous)
+    command: >
+      python scripts/continuous_learning_pipeline.py
+      --config configs/continuous_learning.yaml
+      --model-type text
+    
+    # Or for continuous mode, uncomment:
+    # command: >
+    #   python scripts/continuous_learning_pipeline.py
+    #   --config configs/continuous_learning.yaml
+    #   --model-type text
+    #   --continuous
+    #   --interval 168
+    
+    restart: unless-stopped
+    
+    networks:
+      - sarvanjna-network
+  
+  # TensorBoard for monitoring
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    
+    container_name: sarvanjna-tensorboard
+    
+    command: tensorboard --logdir=/logs --bind_all --port=6006
+    
+    ports:
+      - "6006:6006"
+    
+    volumes:
+      - ../logs:/logs
+    
+    restart: unless-stopped
+    
+    networks:
+      - sarvanjna-network
+  
+  # Optional: Jupyter for interactive analysis
+  jupyter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.continuous_learning
+    
+    container_name: sarvanjna-jupyter
+    
+    command: >
+      jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --NotebookApp.token=''
+      --NotebookApp.password=''
+    
+    ports:
+      - "8888:8888"
+    
+    volumes:
+      - ../:/workspace
+      - ~/.cache:/root/.cache
+    
+    restart: unless-stopped
+    
+    networks:
+      - sarvanjna-network
+
+networks:
+  sarvanjna-network:
+    driver: bridge
