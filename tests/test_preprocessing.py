@@ -88,9 +88,19 @@ class TestSentencePieceTokenizer:
     
     def test_special_tokens(self, tmp_path):
         corpus_file = tmp_path / "corpus.txt"
-        corpus_file.write_text("test " * 100)
+        # Create a more diverse corpus with proper newlines
+        sentences = [
+            "Hello world this is a test",
+            "SentencePiece tokenizer training example",
+            "Machine learning natural language processing",
+            "Python programming artificial intelligence",
+            "Deep neural networks transformer models",
+            "Data science text preprocessing pipeline"
+        ]
+        # Write sentences with newlines, repeat to get enough text
+        corpus_file.write_text("\n".join(sentences * 50))
         
-        tokenizer = SentencePieceTokenizer(vocab_size=100)
+        tokenizer = SentencePieceTokenizer(vocab_size=50)
         model_prefix = str(tmp_path / "tokenizer")
         tokenizer.train([corpus_file], model_prefix, num_threads=1)
         
@@ -102,9 +112,18 @@ class TestSentencePieceTokenizer:
     
     def test_padding(self, tmp_path):
         corpus_file = tmp_path / "corpus.txt"
-        corpus_file.write_text("test sentence " * 100)
+        # Create diverse corpus with proper newlines
+        sentences = [
+            "Hello world test sentence example",
+            "Natural language processing pipeline",
+            "Tokenization padding masking attention",
+            "Training transformer models efficiently",
+            "Deep learning neural network architecture"
+        ]
+        # Write sentences with newlines
+        corpus_file.write_text("\n".join(sentences * 50))
         
-        tokenizer = SentencePieceTokenizer(vocab_size=100)
+        tokenizer = SentencePieceTokenizer(vocab_size=50)
         model_prefix = str(tmp_path / "tokenizer")
         tokenizer.train([corpus_file], model_prefix, num_threads=1)
         

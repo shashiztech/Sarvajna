@@ -1,0 +1,70 @@
+# Latent Diffusion Model Configuration
+
+# Data
+data:
+  batch_size: 4  # Small batch due to memory requirements
+  num_workers: 4
+  image_size: 512
+
+# Model Architecture
+model:
+  # U-Net
+  unet:
+    model_channels: 320
+    channel_multipliers: [1, 2, 4, 4]
+    num_res_blocks: 2
+    attention_resolutions: [4, 2, 1]
+    num_heads: 8
+    context_dim: 768
+  
+  # VAE (use pretrained from Phase 3)
+  vae:
+    base_channels: 128
+    channel_multipliers: [1, 2, 4, 4]
+    latent_channels: 4
+  
+  # Text Encoder (CLIP-like)
+  text_encoder:
+    vocab_size: 49408
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+    max_seq_length: 77
+  
+  # Diffusion
+  scheduler:
+    num_train_timesteps: 1000
+    beta_start: 0.00085
+    beta_end: 0.012
+    schedule_type: "scaled_linear"
+    num_inference_steps: 50
+
+# Training
+training:
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  max_steps: 100000
+  warmup_steps: 1000
+  
+  # EMA
+  use_ema: true
+  ema_decay: 0.9999
+  
+  # Optimization
+  gradient_clip_val: 1.0
+  gradient_accumulation_steps: 4
+  precision: "bf16-mixed"
+  
+  # Validation
+  val_check_interval: 1000
+  log_every_n_steps: 10
+  
+  # Hardware
+  num_gpus: 1
+  strategy: "ddp"
+
+# Inference
+inference:
+  num_inference_steps: 50
+  guidance_scale: 7.5
+  eta: 0.0  # DDIM (deterministic)

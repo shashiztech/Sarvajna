@@ -1,0 +1,26 @@
+# Image VAE Configuration
+
+# Data configuration
+data:
+  image_size: 256
+  num_workers: 4
+
+# Model configuration
+model:
+  latent_channels: 4
+  base_channels: 128
+  kl_weight: 1.0e-6
+
+# Training configuration
+training:
+  batch_size: 8
+  num_epochs: 100
+  learning_rate: 4.5e-6
+  weight_decay: 0.0
+  
+  # Distributed training
+  strategy: "ddp"
+  precision: "bf16-mixed"
+  
+  # Validation
+  val_check_interval: 1.0
