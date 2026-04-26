@@ -1,0 +1,46 @@
+# Large Text-to-Text model configuration
+
+data:
+  raw_data_path: data/raw
+  processed_data_path: data/processed
+  cache_dir: data/cache
+  max_workers: 16
+  batch_size: 16
+
+text:
+  vocab_size: 32000
+  max_seq_length: 1024
+  sentencepiece_model_type: unigram
+  normalization: nmt_nfkc
+
+model:
+  # Larger model
+  d_model: 1024
+  n_heads: 16
+  n_layers: 24
+  d_ff: 4096
+  dropout: 0.1
+
+training:
+  learning_rate: 0.00005
+  weight_decay: 0.01
+  warmup_steps: 20000
+  max_steps: 2000000
+  gradient_clip: 1.0
+  
+  strategy: fsdp  # Use FSDP for large models
+  precision: bf16-mixed
+  num_nodes: 1
+  devices: -1
+  
+  checkpoint_dir: checkpoints/large
+  save_every_n_steps: 10000
+  keep_last_n_checkpoints: 5
+  
+  log_every_n_steps: 100
+  val_check_interval: 2000
+  use_wandb: true
+  wandb_project: sarvanjna-large
+
+seed: 42
+debug: false
